@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import Note from './components/Note';
+import noteService from './services/notes';
 
 function App() {
   const [notes, setNotes] = useState([]);
-  const [content, setContent] = useState('A new note...');
+  const [content, setContent] = useState('');
   const [showAll, setShowAll] = useState(true);
   const notesToShow = showAll ? notes : notes.filter(({ important: i }) => i);
 
   useEffect(() => {
-    const request = axios.get('http://localhost:3001/notes');
-    request.then(response => setNotes(response.data));
+    noteService.getAll().then(initialNotes => setNotes(initialNotes));
   }, []);
 
   function handleContentChange(e) {
@@ -23,12 +22,22 @@ function App() {
     const newNote = {
       content,
       date: new Date().toISOString(),
-      important: Math.random() < 0.5,
-      id: notes.length + 1,
+      important: false,
     }
 
-    setNotes(notes.concat(newNote));
-    setContent('');
+    noteService.create(newNote).then(returnedNote => {
+      setNotes(notes.concat(returnedNote));
+      setContent('');
+    });
+  }
+
+  const toggleImportanceOf = id => {
+    const note = notes.find(note => note.id === id);
+    const changedNote = { ...note, important: !note.important };
+
+    noteService.update(id, changedNote).then(returnedNote => {
+      setNotes(notes.map(note => note.id !== id ? note : returnedNote));
+    });
   }
 
   return (
@@ -41,7 +50,11 @@ function App() {
       </div>
       <ul>
         {notesToShow.map(note =>
-          <Note key={note.id} note={note} />
+          <Note
+            key={note.id}
+            note={note}
+            toggleImportance={() => toggleImportanceOf(note.id)}
+          />
         )}
       </ul>
       <form onSubmit={handleNoteSubmit}>

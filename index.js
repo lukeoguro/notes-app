@@ -20,16 +20,22 @@ app.use(express.static('build'));
 app.use(express.json());
 app.use(reqLogger);
 
-app.get('/api/notes', (request, response) => {
+app.get('/api/notes', (_, res) => {
   Note.find({}).then(notes => {
-    response.json(notes);
+    res.json(notes);
   });
 });
 
-app.get('/api/notes/:id', (req, res) => {
-  Note.findById(req.params.id).then(note => {
-    res.json(note)
-  })
+app.get('/api/notes/:id', (req, res, next) => {
+  Note.findById(req.params.id)
+    .then(note => {
+      if (note) {
+        res.json(note);
+      } else {
+        res.status(404).end();
+      }
+    })
+    .catch(err => next(err));
 });
 
 app.post('/api/notes', (req, res) => {
@@ -50,11 +56,27 @@ app.post('/api/notes', (req, res) => {
   });
 });
 
-app.delete('/api/notes/:id', (req, res) => {
-  const id = Number(req.params.id);
-  notes = notes.filter(note => note.id !== id);
+app.put('/api/notes/:id', (req, res, next) => {
+  const body = req.body
 
-  res.status(204).end();
+  const note = {
+    content: body.content,
+    important: body.important,
+  }
+
+  Note.findByIdAndUpdate(req.params.id, note, { new: true })
+    .then(updatedNote => {
+      res.json(updatedNote);
+    })
+    .catch(err => next(err));
+});
+
+app.delete('/api/notes/:id', (req, res, next) => {
+  Note.findByIdAndRemove(req.params.id)
+    .then(() => {
+      res.status(204).end()
+    })
+    .catch(err => next(err))
 });
 
 const unknownEndpoint = (_, res) => {
@@ -62,6 +84,18 @@ const unknownEndpoint = (_, res) => {
 }
 
 app.use(unknownEndpoint);
+
+const errorHandler = (err, _, res, next) => {
+  console.error(err.message)
+
+  if (err.name === 'CastError') {
+    return res.status(400).send({ error: 'malformed id' });
+  }
+
+  next(err);
+}
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {

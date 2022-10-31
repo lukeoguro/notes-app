@@ -38,12 +38,8 @@ app.get('/api/notes/:id', (req, res, next) => {
     .catch(err => next(err));
 });
 
-app.post('/api/notes', (req, res) => {
+app.post('/api/notes', (req, res, next) => {
   const body = req.body;
-
-  if (!body.content) {
-    return res.status(400).json({ error: 'content missing' });
-  }
 
   const note = new Note({
     content: body.content,
@@ -51,22 +47,28 @@ app.post('/api/notes', (req, res) => {
     date: new Date(),
   });
 
-  note.save().then(savedNote => {
-    res.json(savedNote);
-  });
+  note.save()
+    .then(savedNote => {
+      res.json(savedNote);
+    })
+    .catch(err => next(err));
 });
 
 app.put('/api/notes/:id', (req, res, next) => {
-  const body = req.body
+  const { content, important } = req.body;
 
-  const note = {
-    content: body.content,
-    important: body.important,
-  }
 
-  Note.findByIdAndUpdate(req.params.id, note, { new: true })
+  Note.findByIdAndUpdate(
+    req.params.id,
+    { content, important },
+    { new: true, runValidators: true, context: 'query' }
+  )
     .then(updatedNote => {
-      res.json(updatedNote);
+      if (updatedNote) {
+        res.json(updatedNote);
+      } else {
+        res.status(404).end();
+      }
     })
     .catch(err => next(err));
 });
@@ -90,6 +92,8 @@ const errorHandler = (err, _, res, next) => {
 
   if (err.name === 'CastError') {
     return res.status(400).send({ error: 'malformed id' });
+  } else if (err.name === 'ValidationError') {
+    return res.status(400).json({ error: err.message });
   }
 
   next(err);

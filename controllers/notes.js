@@ -1,25 +1,21 @@
 const notesRouter = require('express').Router();
 const Note = require('../models/note');
 
-notesRouter.get('', (_, res) => {
-  Note.find({}).then(notes => {
-    res.json(notes);
-  });
+notesRouter.get('/', async (_, res) => {
+  const notes = await Note.find({});
+  res.json(notes);
 });
 
-notesRouter.get('/:id', (req, res, next) => {
-  Note.findById(req.params.id)
-    .then(note => {
-      if (note) {
-        res.json(note);
-      } else {
-        res.status(404).end();
-      }
-    })
-    .catch(err => next(err));
+notesRouter.get('/:id', async (req, res) => {
+  const note = await Note.findById(req.params.id);
+  if (note) {
+    res.json(note);
+  } else {
+    res.status(404).end();
+  }
 });
 
-notesRouter.post('', (req, res, next) => {
+notesRouter.post('/', async (req, res) => {
   const body = req.body;
 
   const note = new Note({
@@ -28,14 +24,11 @@ notesRouter.post('', (req, res, next) => {
     date: new Date(),
   });
 
-  note.save()
-    .then(savedNote => {
-      res.json(savedNote);
-    })
-    .catch(err => next(err));
+  const savedNote = await note.save();
+  res.status(201).json(savedNote);
 });
 
-notesRouter.put('/:id', (req, res, next) => {
+notesRouter.put('/:id', async (req, res) => {
   const body = req.body;
 
   const note = {
@@ -45,23 +38,17 @@ notesRouter.put('/:id', (req, res, next) => {
 
   const options = { new: true, runValidators: true, context: 'query' };
 
-  Note.findByIdAndUpdate(req.params.id, note, options)
-    .then(updatedNote => {
-      if (updatedNote) {
-        res.json(updatedNote);
-      } else {
-        res.status(404).end();
-      }
-    })
-    .catch(err => next(err));
+  const updatedNote = await Note.findByIdAndUpdate(req.params.id, note, options);
+  if (updatedNote) {
+    res.status(201).json(updatedNote);
+  } else {
+    res.status(404).end();
+  }
 });
 
-notesRouter.delete('/:id', (req, res, next) => {
-  Note.findByIdAndRemove(req.params.id)
-    .then(() => {
-      res.status(204).end();
-    })
-    .catch(err => next(err));
+notesRouter.delete('/:id', async (req, res) => {
+  await Note.findByIdAndRemove(req.params.id);
+  res.status(204).end();
 });
 
 module.exports = notesRouter;

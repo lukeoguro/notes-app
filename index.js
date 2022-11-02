@@ -13,7 +13,7 @@ const reqLogger = (req, _, next) => {
   console.log('Body:  ', req.body);
   console.log('---');
   next();
-}
+};
 
 app.use(cors());
 app.use(express.static('build'));
@@ -76,19 +76,19 @@ app.put('/api/notes/:id', (req, res, next) => {
 app.delete('/api/notes/:id', (req, res, next) => {
   Note.findByIdAndRemove(req.params.id)
     .then(() => {
-      res.status(204).end()
+      res.status(204).end();
     })
-    .catch(err => next(err))
+    .catch(err => next(err));
 });
 
 const unknownEndpoint = (_, res) => {
   res.status(404).json({ error: 'unknown endpoint' });
-}
+};
 
 app.use(unknownEndpoint);
 
 const errorHandler = (err, _, res, next) => {
-  console.error(err.message)
+  console.error(err.message);
 
   if (err.name === 'CastError') {
     return res.status(400).send({ error: 'malformed id' });
@@ -97,7 +97,7 @@ const errorHandler = (err, _, res, next) => {
   }
 
   next(err);
-}
+};
 
 app.use(errorHandler);
 

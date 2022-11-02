@@ -1,107 +1,11 @@
-require('dotenv').config();
+const app = require('./app');
+const http = require('http');
 
-const express = require('express');
-const cors = require('cors');
+const config = require('./utils/config');
+const logger = require('./utils/logger');
 
-const Note = require('./models/note');
+const server = http.createServer(app);
 
-const app = express();
-
-const reqLogger = (req, _, next) => {
-  console.log('Method:', req.method);
-  console.log('Path:  ', req.path);
-  console.log('Body:  ', req.body);
-  console.log('---');
-  next();
-};
-
-app.use(cors());
-app.use(express.static('build'));
-app.use(express.json());
-app.use(reqLogger);
-
-app.get('/api/notes', (_, res) => {
-  Note.find({}).then(notes => {
-    res.json(notes);
-  });
-});
-
-app.get('/api/notes/:id', (req, res, next) => {
-  Note.findById(req.params.id)
-    .then(note => {
-      if (note) {
-        res.json(note);
-      } else {
-        res.status(404).end();
-      }
-    })
-    .catch(err => next(err));
-});
-
-app.post('/api/notes', (req, res, next) => {
-  const body = req.body;
-
-  const note = new Note({
-    content: body.content,
-    important: body.important || false,
-    date: new Date(),
-  });
-
-  note.save()
-    .then(savedNote => {
-      res.json(savedNote);
-    })
-    .catch(err => next(err));
-});
-
-app.put('/api/notes/:id', (req, res, next) => {
-  const { content, important } = req.body;
-
-
-  Note.findByIdAndUpdate(
-    req.params.id,
-    { content, important },
-    { new: true, runValidators: true, context: 'query' }
-  )
-    .then(updatedNote => {
-      if (updatedNote) {
-        res.json(updatedNote);
-      } else {
-        res.status(404).end();
-      }
-    })
-    .catch(err => next(err));
-});
-
-app.delete('/api/notes/:id', (req, res, next) => {
-  Note.findByIdAndRemove(req.params.id)
-    .then(() => {
-      res.status(204).end();
-    })
-    .catch(err => next(err));
-});
-
-const unknownEndpoint = (_, res) => {
-  res.status(404).json({ error: 'unknown endpoint' });
-};
-
-app.use(unknownEndpoint);
-
-const errorHandler = (err, _, res, next) => {
-  console.error(err.message);
-
-  if (err.name === 'CastError') {
-    return res.status(400).send({ error: 'malformed id' });
-  } else if (err.name === 'ValidationError') {
-    return res.status(400).json({ error: err.message });
-  }
-
-  next(err);
-};
-
-app.use(errorHandler);
-
-const PORT = process.env.PORT;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+server.listen(config.PORT, () => {
+  logger.info(`Server running on port ${config.PORT}`);
 });

@@ -1,5 +1,5 @@
 // Command-line database
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 (async () => {
   const [, , password, content] = process.argv;

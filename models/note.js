@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const url = process.env.MONGODB_URI;
 
@@ -32,4 +32,4 @@ noteSchema.set('toJSON', {
 })
 
 const Note = mongoose.model('Note', noteSchema);
-export default Note;
+module.exports = Note;

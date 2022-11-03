@@ -76,7 +76,21 @@ describe('viewing a specific note', () => {
 });
 
 describe('addition of a new note', () => {
-  test('succeeds with valid data', async () => {
+  beforeEach(async () => {
+    await User.deleteMany({});
+
+    const passwordHash = await bcrypt.hash('sekret', 10);
+    const user = new User({ username: 'root', passwordHash });
+
+    await user.save();
+  });
+
+  test('succeeds with valid data and authentication', async () => {
+    const response = await api.post('/api/login')
+      .send({ username: 'root', password: 'sekret' });
+
+    const token = response.body.token;
+
     const newNote = {
       content: 'async/await simplifies making async calls',
       important: true,
@@ -84,6 +98,7 @@ describe('addition of a new note', () => {
 
     await api
       .post('/api/notes')
+      .set('Authorization', `Bearer ${token}`)
       .send(newNote)
       .expect(201)
       .expect('Content-Type', /application\/json/);
@@ -98,14 +113,36 @@ describe('addition of a new note', () => {
   });
 
   test('fails with status code 400 if data invalid', async () => {
+    const response = await api.post('/api/login')
+      .send({ username: 'root', password: 'sekret' });
+
+    const token = response.body.token;
+
     const newNote = {
       important: true
     };
 
     await api
       .post('/api/notes')
+      .set('Authorization', `Bearer ${token}`)
       .send(newNote)
       .expect(400);
+
+    const notesAtEnd = await helper.notesInDb();
+
+    expect(notesAtEnd).toHaveLength(helper.initialNotes.length);
+  });
+
+  test('fails with status code 401 if authorization invalid', async () => {
+    const newNote = {
+      content: 'async/await simplifies making async calls',
+      important: true
+    };
+
+    await api
+      .post('/api/notes')
+      .send(newNote)
+      .expect(401);
 
     const notesAtEnd = await helper.notesInDb();
 

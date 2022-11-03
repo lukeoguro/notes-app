@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Note from './components/Note';
 import Notification from './components/Notification';
+import LoginForm from './components/LoginForm';
+import NoteForm from './components/NoteForm';
+import Togglable from './components/Togglable';
+
 import noteService from './services/notes';
 import loginService from './services/login';
 
 function App() {
   const [notes, setNotes] = useState([]);
-  const [content, setContent] = useState('');
   const [showAll, setShowAll] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
   const [username, setUsername] = useState('');
@@ -26,30 +29,6 @@ function App() {
       noteService.setToken(user.token);
     }
   }, []);
-
-  function handleContentChange(e) {
-    setContent(e.target.value);
-  }
-
-  function handleNoteSubmit(e) {
-    e.preventDefault();
-
-    const newNote = {
-      content,
-      date: new Date().toISOString(),
-      important: false,
-    }
-
-    noteService.create(newNote)
-      .then(returnedNote => {
-        setNotes(notes.concat(returnedNote));
-        setContent('');
-      })
-      .catch(error => {
-        setErrorMessage(error.response.data.error);
-        setTimeout(() => setErrorMessage(null), 5000);
-      });
-  }
 
   const toggleImportanceOf = id => {
     const note = notes.find(note => note.id === id);
@@ -95,39 +74,27 @@ function App() {
     setUser(null);
   }
 
-  const loginForm = () => (
-    <form onSubmit={handleLogin}>
-      <div>
-        username
-        <input
-          type="text"
-          value={username}
-          name="Username"
-          onChange={({ target }) => setUsername(target.value)}
-        />
-      </div>
-      <div>
-        password
-        <input
-          type="password"
-          value={password}
-          name="Password"
-          onChange={({ target }) => setPassword(target.value)}
-        />
-      </div>
-      <button type="submit">login</button>
-    </form>
-  );
+  function handleUsernameChange(e) {
+    setUsername(e.target.value);
+  }
 
-  const noteForm = () => (
-    <form onSubmit={handleNoteSubmit}>
-      <input
-        value={content}
-        onChange={handleContentChange}
-      />
-      <button type="submit">Save</button>
-    </form>
-  );
+  function handlePasswordChange(e) {
+    setPassword(e.target.value);
+  }
+
+  function createNote(noteObject) {
+    noteService.create(noteObject)
+      .then(returnedNote => {
+        noteFormRef.current.toggleVisibility();
+        setNotes(notes.concat(returnedNote));
+      })
+      .catch(error => {
+        setErrorMessage(error.response.data.error);
+        setTimeout(() => setErrorMessage(null), 5000);
+      });
+  }
+
+  const noteFormRef = useRef();
 
   return (
     <div>
@@ -135,11 +102,23 @@ function App() {
       <Notification message={errorMessage} />
 
       {user === null ?
-        loginForm() :
+        <Togglable buttonLabel="Login">
+          <LoginForm
+            username={username}
+            password={password}
+            handleUsernameChange={handleUsernameChange}
+            handlePasswordChange={handlePasswordChange}
+            handleLogin={handleLogin}
+          />
+        </Togglable> :
         <div>
           <p>Logged in as: {user.name}</p>
-          {noteForm()}
           <button onClick={handleLogout}>Logout</button>
+          <Togglable buttonLabel="New note" ref={noteFormRef}>
+            <NoteForm
+              createNote={createNote}
+            />
+          </Togglable>
         </div>
       }
 

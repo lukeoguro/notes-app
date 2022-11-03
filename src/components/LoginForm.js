@@ -14,8 +14,9 @@ function LoginForm({
         Username:
         <input
           type="text"
-          value={username}
+          id='username'
           name="Username"
+          value={username}
           onChange={handleUsernameChange}
         />
       </div>
@@ -23,12 +24,13 @@ function LoginForm({
         Password:
         <input
           type="password"
-          value={password}
+          id='password'
           name="Password"
+          value={password}
           onChange={handlePasswordChange}
         />
       </div>
-      <button type="submit">Login</button>
+      <button id="login-button" type="submit">Login</button>
     </form>
   )
 }

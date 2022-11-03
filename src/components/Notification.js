@@ -1,7 +1,7 @@
 function Notification({ message }) {
   if (message === null) {
-    return null;
-  };
+    return null
+  }
 
   return (
     <div className='error'>
@@ -10,4 +10,4 @@ function Notification({ message }) {
   )
 }
 
-export default Notification;
+export default Notification

@@ -1,5 +1,5 @@
 
-import PropTypes from 'prop-types';
+import PropTypes from 'prop-types'
 
 function LoginForm({
   handleLogin,
@@ -31,7 +31,7 @@ function LoginForm({
       <button type="submit">Login</button>
     </form>
   )
-};
+}
 
 LoginForm.propTypes = {
   handleLogin: PropTypes.func.isRequired,
@@ -41,4 +41,4 @@ LoginForm.propTypes = {
   password: PropTypes.string.isRequired
 }
 
-export default LoginForm;
+export default LoginForm

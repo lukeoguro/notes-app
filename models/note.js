@@ -10,10 +10,14 @@ const noteSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
-  important: Boolean,
+  important: {
+    type: Boolean,
+    required: true
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
+    required: true
   }
 });
 

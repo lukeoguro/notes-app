@@ -10,9 +10,14 @@ const app = require('../app');
 const api = supertest(app);
 
 beforeEach(async () => {
-  await Note.deleteMany({});
+  await User.deleteMany({});
+  const passwordHash = await bcrypt.hash('secret', 10);
+  const user = new User({ username: 'root', passwordHash });
+  await user.save();
 
+  await Note.deleteMany({});
   for (let note of helper.initialNotes) {
+    note.user = user._id;
     let noteObject = new Note(note);
     await noteObject.save();
   }
@@ -76,18 +81,9 @@ describe('viewing a specific note', () => {
 });
 
 describe('addition of a new note', () => {
-  beforeEach(async () => {
-    await User.deleteMany({});
-
-    const passwordHash = await bcrypt.hash('sekret', 10);
-    const user = new User({ username: 'root', passwordHash });
-
-    await user.save();
-  });
-
   test('succeeds with valid data and authentication', async () => {
     const response = await api.post('/api/login')
-      .send({ username: 'root', password: 'sekret' });
+      .send({ username: 'root', password: 'secret' });
 
     const token = response.body.token;
 
@@ -114,7 +110,7 @@ describe('addition of a new note', () => {
 
   test('fails with status code 400 if data invalid', async () => {
     const response = await api.post('/api/login')
-      .send({ username: 'root', password: 'sekret' });
+      .send({ username: 'root', password: 'secret' });
 
     const token = response.body.token;
 
@@ -151,12 +147,18 @@ describe('addition of a new note', () => {
 });
 
 describe('deletion of a note', () => {
-  test('succeeds with status code 204 if id is valid', async () => {
+  test('succeeds with status code 204 with valid id and authentication', async () => {
+    const response = await api.post('/api/login')
+      .send({ username: 'root', password: 'secret' });
+
+    const token = response.body.token;
+
     const notesAtStart = await helper.notesInDb();
     const noteToDelete = notesAtStart[0];
 
     await api
       .delete(`/api/notes/${noteToDelete.id}`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(204);
 
     const notesAtEnd = await helper.notesInDb();
@@ -166,18 +168,58 @@ describe('deletion of a note', () => {
     );
 
     const contents = notesAtEnd.map(r => r.content);
-
     expect(contents).not.toContain(noteToDelete.content);
+  });
+
+  test('fails with status code 401 if authorization invalid', async () => {
+    const notesAtStart = await helper.notesInDb();
+    const noteToDelete = notesAtStart[0];
+
+    await api
+      .delete(`/api/notes/${noteToDelete.id}`)
+      .expect(401);
+
+    const notesAtEnd = await helper.notesInDb();
+
+    expect(notesAtEnd).toHaveLength(helper.initialNotes.length);
+  });
+
+  test('fails with status code 403 if deleting note by other user', async () => {
+    const passwordHash = await bcrypt.hash('SECRET', 10);
+    const user = new User({ username: 'anotheruser', passwordHash });
+    await user.save();
+
+    const response = await api.post('/api/login')
+      .send({ username: 'anotheruser', password: 'SECRET' });
+
+    const token = response.body.token;
+
+    const notesAtStart = await helper.notesInDb();
+    const noteToDelete = notesAtStart[0];
+
+    await api
+      .delete(`/api/notes/${noteToDelete.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403);
+
+    const notesAtEnd = await helper.notesInDb();
+    expect(notesAtEnd).toHaveLength(helper.initialNotes.length);
   });
 });
 
 describe('updating a note', () => {
-  test('succeeds with valid data', async () => {
+  test('succeeds with valid data and authentication', async () => {
+    const response = await api.post('/api/login')
+      .send({ username: 'root', password: 'secret' });
+
+    const token = response.body.token;
+
     const notesAtStart = await helper.notesInDb();
     const noteToUpdate = notesAtStart[0];
 
     await api
       .put(`/api/notes/${noteToUpdate.id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ content: 'Some new content' })
       .expect(201);
 
@@ -188,34 +230,74 @@ describe('updating a note', () => {
     expect(contents).toContain('Some new content');
   });
 
-  test('fails with statuscode 404 if note does not exist', async () => {
+  test('fails with status code 401 if authorization invalid', async () => {
+    const notesAtStart = await helper.notesInDb();
+    const noteToUpdate = notesAtStart[0];
+
+    await api
+      .put(`/api/notes/${noteToUpdate.id}`)
+      .send({ content: 'Some new content' })
+      .expect(401);
+
+    const notesAtEnd = await helper.notesInDb();
+    expect(notesAtEnd).toHaveLength(helper.initialNotes.length);
+  });
+
+  test('fails with status code 403 if updating note by other user', async () => {
+    const passwordHash = await bcrypt.hash('SECRET', 10);
+    const user = new User({ username: 'anotheruser', passwordHash });
+    await user.save();
+
+    const response = await api.post('/api/login')
+      .send({ username: 'anotheruser', password: 'SECRET' });
+
+    const token = response.body.token;
+
+    const notesAtStart = await helper.notesInDb();
+    const noteToUpdate = notesAtStart[0];
+
+    await api
+      .put(`/api/notes/${noteToUpdate.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ content: 'Some new content' })
+      .expect(403);
+
+    const notesAtEnd = await helper.notesInDb();
+    expect(notesAtEnd).toHaveLength(helper.initialNotes.length);
+  });
+
+  test('fails with status code 404 if note does not exist', async () => {
+    const response = await api.post('/api/login')
+      .send({ username: 'root', password: 'secret' });
+
+    const token = response.body.token;
+
     const validNonexistingId = await helper.nonExistingId();
 
     await api
       .put(`/api/notes/${validNonexistingId}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ content: 'Some new content' })
       .expect(404);
   });
 
-  test('fails with statuscode 400 id is invalid', async () => {
+  test('fails with status code 400 if id is invalid', async () => {
+    const response = await api.post('/api/login')
+      .send({ username: 'root', password: 'secret' });
+
+    const token = response.body.token;
+
     const invalidId = '1';
 
     await api
-      .get(`/api/notes/${invalidId}`)
+      .put(`/api/notes/${invalidId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ content: 'Some new content' })
       .expect(400);
   });
 });
 
 describe('when there is initially one user in db', () => {
-  beforeEach(async () => {
-    await User.deleteMany({});
-
-    const passwordHash = await bcrypt.hash('sekret', 10);
-    const user = new User({ username: 'root', passwordHash });
-
-    await user.save();
-  });
-
   test('creation succeeds with a fresh username', async () => {
     const usersAtStart = await helper.usersInDb();
 
@@ -259,7 +341,6 @@ describe('when there is initially one user in db', () => {
     expect(usersAtEnd).toEqual(usersAtStart);
   });
 });
-
 
 afterAll(() => {
   mongoose.connection.close();

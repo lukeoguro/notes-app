@@ -32,10 +32,6 @@ notesRouter.post('/', async (req, res) => {
   const token = getTokenFrom(req);
   const decodedToken = jwt.verify(token, process.env.SECRET);
 
-  if (!decodedToken.id) {
-    return res.status(401).json({ error: 'token missing or invalid' });
-  }
-
   const user = await User.findById(decodedToken.id);
 
   const note = new Note({
@@ -54,26 +50,43 @@ notesRouter.post('/', async (req, res) => {
 });
 
 notesRouter.put('/:id', async (req, res) => {
-  const body = req.body;
+  const token = getTokenFrom(req);
+  const decodedToken = jwt.verify(token, process.env.SECRET);
+
+  const user = await User.findById(decodedToken.id);
+  const noteToUpdate = await Note.findById(req.params.id);
+
+  if (!noteToUpdate) {
+    return res.status(404).end();
+  } else if (!user._id.equals(noteToUpdate.user)) {
+    return res.status(403).end();
+  }
 
   const note = {
-    content: body.content,
-    important: body.important
+    content: req.body.content,
+    important: req.body.important
   };
 
+  noteToUpdate.content = req.body.content;
+  noteToUpdate.important = req.body.important;
   const options = { new: true, runValidators: true, context: 'query' };
-
   const updatedNote = await Note.findByIdAndUpdate(req.params.id, note, options);
-  if (updatedNote) {
-    res.status(201).json(updatedNote);
-  } else {
-    res.status(404).end();
-  }
+  res.status(201).json(updatedNote);
 });
 
 notesRouter.delete('/:id', async (req, res) => {
-  await Note.findByIdAndRemove(req.params.id);
-  res.status(204).end();
+  const token = getTokenFrom(req);
+  const decodedToken = jwt.verify(token, process.env.SECRET);
+
+  const user = await User.findById(decodedToken.id);
+  const noteToDelete = await Note.findById(req.params.id);
+
+  if (user._id.equals(noteToDelete.user)) {
+    await noteToDelete.remove();
+    res.status(204).end();
+  } else {
+    res.status(403).end();
+  }
 });
 
 module.exports = notesRouter;

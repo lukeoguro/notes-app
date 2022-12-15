@@ -1,5 +1,6 @@
 const Note = require('../models/note');
 const User = require('../models/user');
+const bcrypt = require('bcrypt');
 
 const initialNotes = [
   {
@@ -15,7 +16,18 @@ const initialNotes = [
 ];
 
 const nonExistingId = async () => {
-  const note = new Note({ content: 'willremovethissoon', date: new Date() });
+  await User.deleteMany({});
+  const passwordHash = await bcrypt.hash('secret', 10);
+  const user = new User({ username: 'root', passwordHash });
+  await user.save();
+
+  const note = new Note({
+    content: 'willremovethissoon',
+    date: new Date(),
+    important: false,
+    user: user._id,
+  });
+
   await note.save();
   await note.remove();
 

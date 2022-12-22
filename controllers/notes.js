@@ -42,6 +42,7 @@ notesRouter.post('/', async (req, res) => {
   });
 
   const savedNote = await note.save();
+  await savedNote.populate('user', { username: 1, name: 1 });
 
   user.notes = user.notes.concat(savedNote._id);
   await user.save();
@@ -71,6 +72,7 @@ notesRouter.put('/:id', async (req, res) => {
   noteToUpdate.important = req.body.important;
   const options = { new: true, runValidators: true, context: 'query' };
   const updatedNote = await Note.findByIdAndUpdate(req.params.id, note, options);
+  await updatedNote.populate('user', { username: 1, name: 1 });
   res.status(201).json(updatedNote);
 });
 

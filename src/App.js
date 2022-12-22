@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Note from './components/Note'
 import Notification from './components/Notification'
 import LoginForm from './components/LoginForm'
@@ -45,6 +45,13 @@ function App() {
       })
   }
 
+  function handleNoteDelete(id) {
+    noteService.remove(id)
+      .then(() => {
+        setNotes(notes.filter(c => c.id !== id))
+      })
+  }
+
   const handleLogin = async (event) => {
     event.preventDefault()
 
@@ -85,7 +92,6 @@ function App() {
   function createNote(noteObject) {
     noteService.create(noteObject)
       .then(returnedNote => {
-        noteFormRef.current.toggleVisibility()
         setNotes(notes.concat(returnedNote))
       })
       .catch(error => {
@@ -94,11 +100,9 @@ function App() {
       })
   }
 
-  const noteFormRef = useRef()
-
   return (
     <div>
-      <h1>Notes</h1>
+      <h1>Notes App</h1>
       <Notification message={errorMessage} />
 
       {user === null ?
@@ -114,14 +118,9 @@ function App() {
         <div>
           <p>Logged in as: {user.name}</p>
           <button onClick={handleLogout}>Logout</button>
-          <Togglable buttonLabel="New note" ref={noteFormRef}>
-            <NoteForm
-              createNote={createNote}
-            />
-          </Togglable>
         </div>
       }
-
+      <h2>Notes</h2>
       <div>
         <button onClick={() => setShowAll(!showAll)}>
           Show {showAll ? 'important' : 'all'}
@@ -133,9 +132,13 @@ function App() {
             key={note.id}
             note={note}
             toggleImportance={() => toggleImportanceOf(note.id)}
+            handleNoteDelete={handleNoteDelete}
+            currentUser={user}
           />
         )}
       </ul>
+
+      {user && <NoteForm createNote={createNote} />}
     </div>
   )
 }

@@ -21,7 +21,16 @@ const noteService = {
   },
 
   update(id, newObject) {
-    const request = axios.put(`${baseUrl}/${id}`, newObject)
+    const config = { headers: { Authorization: token } }
+
+    const request = axios.put(`${baseUrl}/${id}`, newObject, config)
+    return request.then(response => response.data)
+  },
+
+  remove(id) {
+    const config = { headers: { Authorization: token } }
+
+    const request = axios.delete(`${baseUrl}/${id}`, config)
     return request.then(response => response.data)
   }
 }

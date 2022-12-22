@@ -47,7 +47,6 @@ describe('Note app', function () {
     })
 
     it('a new note can be created', function () {
-      cy.contains('New note').click()
       cy.get('input').type('a note created by cypress')
       cy.contains('Save').click()
       cy.contains('a note created by cypress')
@@ -79,7 +78,7 @@ describe('Note app', function () {
       })
 
       it('one of those can be made important', function () {
-        cy.contains('second note').parent().find('button').as('theButton')
+        cy.contains('second note').parent().find('button').first().as('theButton')
         cy.get('@theButton').click()
         cy.get('@theButton').should('contain', 'Unmark as important')
       })
